@@ -1,5 +1,134 @@
+* {
+    box-sizing: border-box;
+}
+
 body {
-    font-family: Arial, sans-serif;
-    text-align: center;
-    margin-top: 80px;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f4f6f8;
+    color: #222;
+    margin: 0;
+    padding: 40px;
+}
+
+body > h1 {
+    color: #1f4e79;
+    margin-bottom: 10px;
+}
+
+h2 {
+    color: #333;
+    margin-top: 25px;
+}
+
+p {
+    line-height: 1.6;
+}
+
+/* Links */
+
+a {
+    color: #1f4e79;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Forms */
+
+form {
+    background: white;
+    max-width: 550px;
+    padding: 25px;
+    margin-top: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+label {
+    font-weight: bold;
+}
+
+input,
+textarea,
+select {
+    width: 100%;
+    padding: 11px;
+    margin-top: 6px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 15px;
+}
+
+textarea {
+    resize: vertical;
+}
+
+button {
+    background: #1f4e79;
+    color: white;
+    border: none;
+    padding: 11px 20px;
+    border-radius: 5px;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #163a5c;
+}
+
+/* Tables */
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    margin-top: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+th,
+td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+th {
+    background: #1f4e79;
+    color: white;
+}
+
+tr:hover {
+    background: #f1f5f9;
+}
+
+/* Flash messages */
+
+body > p {
+    max-width: 800px;
+}
+
+
+@media (max-width: 768px) {
+
+    body {
+        padding: 20px;
+    }
+
+    table {
+        font-size: 13px;
+    }
+
+    th,
+    td {
+        padding: 8px;
+    }
+
+    form {
+        width: 100%;
+    }
 }

@@ -127,6 +127,30 @@ def dashboard():
         flash("Please log in first.")
         return redirect(url_for("login"))
 
+    connection = get_db_connection()
+
+    bugs = connection.execute(
+        """
+        SELECT *
+        FROM bugs
+        WHERE reporter_id = ?
+        ORDER BY created_at DESC
+        """,
+        (session["user_id"],)
+    ).fetchall()
+
+    connection.close()
+
+    return render_template(
+        "dashboard.html",
+        name=session["user_name"],
+        bugs=bugs
+    )
+
+    if "user_id" not in session:
+        flash("Please log in first.")
+        return redirect(url_for("login"))
+
     return render_template(
         "dashboard.html",
         name=session["user_name"]
@@ -141,6 +165,75 @@ def logout():
 
     return redirect(url_for("login"))
 
+@app.route("/report-bug", methods=["GET", "POST"])
+def report_bug():
 
+    if "user_id" not in session:
+        flash("Please log in first.")
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+
+        title = request.form["title"].strip()
+        description = request.form["description"].strip()
+        category = request.form["category"]
+        priority = request.form["priority"]
+
+        if not title or not description:
+            flash("Title and description are required.")
+            return redirect(url_for("report_bug"))
+
+        if len(title) < 3:
+            flash("Bug title must be at least 3 characters.")
+            return redirect(url_for("report_bug"))
+
+        valid_categories = [
+            "UI",
+            "Functionality",
+            "Performance",
+            "Security",
+            "Other"
+        ]
+
+        valid_priorities = [
+            "Low",
+            "Medium",
+            "High"
+        ]
+
+        if category not in valid_categories:
+            flash("Please select a valid category.")
+            return redirect(url_for("report_bug"))
+
+        if priority not in valid_priorities:
+            flash("Please select a valid priority.")
+            return redirect(url_for("report_bug"))
+
+        connection = get_db_connection()
+
+        connection.execute(
+            """
+            INSERT INTO bugs
+            (title, description, category, priority, status, reporter_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                title,
+                description,
+                category,
+                priority,
+                "Open",
+                session["user_id"]
+            )
+        )
+
+        connection.commit()
+        connection.close()
+
+        flash("Bug reported successfully.")
+
+        return redirect(url_for("dashboard"))
+
+    return render_template("report_bug.html")
 if __name__ == "__main__":
     app.run(debug=True)

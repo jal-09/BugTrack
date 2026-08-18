@@ -2,12 +2,15 @@
 <html lang="en">
 
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Dashboard | BugTrack</title>
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
 </head>
 
 <body>
@@ -16,11 +19,92 @@
 
     <h2>Welcome, {{ name }}</h2>
 
-    <p>You are successfully logged in.</p>
+    {% with messages = get_flashed_messages() %}
+
+    {% if messages %}
+
+    {% for message in messages %}
+
+    <p>{{ message }}</p>
+
+    {% endfor %}
+
+    {% endif %}
+
+    {% endwith %}
+
+
+    <a href="{{ url_for('report_bug') }}">
+        Report New Bug
+    </a>
+
+    &nbsp; | &nbsp;
 
     <a href="{{ url_for('logout') }}">
         Logout
     </a>
+
+
+    <h2>My Reported Bugs</h2>
+
+
+    {% if bugs %}
+
+    <table border="1" cellpadding="10">
+
+        <tr>
+
+            <th>ID</th>
+            <th>Title</th>
+            <th>Category</th>
+            <th>Priority</th>
+            <th>Status</th>
+            <th>Created</th>
+
+        </tr>
+
+
+        {% for bug in bugs %}
+
+        <tr>
+
+            <td>
+                {{ bug["id"] }}
+            </td>
+
+            <td>
+                {{ bug["title"] }}
+            </td>
+
+            <td>
+                {{ bug["category"] }}
+            </td>
+
+            <td>
+                {{ bug["priority"] }}
+            </td>
+
+            <td>
+                {{ bug["status"] }}
+            </td>
+
+            <td>
+                {{ bug["created_at"] }}
+            </td>
+
+        </tr>
+
+        {% endfor %}
+
+    </table>
+
+    {% else %}
+
+    <p>
+        You have not reported any bugs yet.
+    </p>
+
+    {% endif %}
 
 </body>
 

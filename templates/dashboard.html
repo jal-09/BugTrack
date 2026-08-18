@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>BugTrack</title>
+    <title>Dashboard | BugTrack</title>
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
@@ -14,16 +14,12 @@
 
     <h1>BugTrack</h1>
 
-    <p>Simple Bug Tracking System</p>
+    <h2>Welcome, {{ name }}</h2>
 
-    <a href="{{ url_for('login') }}">
-        Login
-    </a>
+    <p>You are successfully logged in.</p>
 
-    <br><br>
-
-    <a href="{{ url_for('register') }}">
-        Register
+    <a href="{{ url_for('logout') }}">
+        Logout
     </a>
 
 </body>

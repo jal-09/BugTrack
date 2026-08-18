@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Manage Bug | BugTrack</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+</head>
+
+<body>
+
+    <h1>BugTrack Admin</h1>
+
+    <h2>Manage Bug #{{ bug["id"] }}</h2>
+
+    <p>
+        <strong>Title:</strong>
+        {{ bug["title"] }}
+    </p>
+
+    <p>
+        <strong>Description:</strong>
+        {{ bug["description"] }}
+    </p>
+
+    <p>
+        <strong>Category:</strong>
+        {{ bug["category"] }}
+    </p>
+
+    <form method="POST">
+
+        <label>Priority</label>
+
+        <br>
+
+        <select name="priority">
+
+            <option value="Low" {% if bug["priority"]=="Low" %}selected{% endif %}>
+                Low
+            </option>
+
+            <option value="Medium" {% if bug["priority"]=="Medium" %}selected{% endif %}>
+                Medium
+            </option>
+
+            <option value="High" {% if bug["priority"]=="High" %}selected{% endif %}>
+                High
+            </option>
+
+        </select>
+
+        <br><br>
+
+        <label>Status</label>
+
+        <br>
+
+        <select name="status">
+
+            <option value="Open" {% if bug["status"]=="Open" %}selected{% endif %}>
+                Open
+            </option>
+
+            <option value="In Progress" {% if bug["status"]=="In Progress" %}selected{% endif %}>
+                In Progress
+            </option>
+
+            <option value="Resolved" {% if bug["status"]=="Resolved" %}selected{% endif %}>
+                Resolved
+            </option>
+
+        </select>
+
+        <br><br>
+
+        <button type="submit">
+            Update Bug
+        </button>
+
+    </form>
+
+    <br>
+
+    <a href="{{ url_for('admin_dashboard') }}">
+        Back to Admin Dashboard
+    </a>
+
+</body>
+
+</html>

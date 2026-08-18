@@ -14,6 +14,10 @@ from flask import (
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
+# --------------------------------------------------
+# APP CONFIGURATION
+# --------------------------------------------------
+
 app = Flask(__name__)
 
 app.secret_key = os.environ.get(
@@ -21,29 +25,46 @@ app.secret_key = os.environ.get(
     "bugtrack-development-secret-key"
 )
 
+# Use the database located in the same folder as app.py
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATABASE = os.path.join(BASE_DIR, "database.db")
+
+
+# --------------------------------------------------
+# DATABASE CONNECTION
+# --------------------------------------------------
 
 def get_db_connection():
-    connection = sqlite3.connect("database.db")
+    connection = sqlite3.connect(DATABASE)
     connection.row_factory = sqlite3.Row
     return connection
 
+
+# --------------------------------------------------
+# HOME PAGE
+# --------------------------------------------------
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
+# --------------------------------------------------
+# REGISTER
+# --------------------------------------------------
+
 @app.route("/register", methods=["GET", "POST"])
 def register():
 
     if request.method == "POST":
 
-        name = request.form["name"].strip()
-        email = request.form["email"].strip().lower()
-        password = request.form["password"]
-        confirm_password = request.form["confirm_password"]
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
 
-        if not name or not email or not password:
+        # Validation
+        if not name or not email or not password or not confirm_password:
             flash("All fields are required.")
             return redirect(url_for("register"))
 
@@ -55,10 +76,12 @@ def register():
             flash("Password must be at least 6 characters.")
             return redirect(url_for("register"))
 
+        # Hash password before saving
         hashed_password = generate_password_hash(password)
 
         connection = get_db_connection()
 
+        # Check duplicate email
         existing_user = connection.execute(
             "SELECT * FROM users WHERE email = ?",
             (email,)
@@ -69,12 +92,18 @@ def register():
             flash("An account with this email already exists.")
             return redirect(url_for("register"))
 
+        # Create normal user
         connection.execute(
             """
             INSERT INTO users (name, email, password, role)
             VALUES (?, ?, ?, ?)
             """,
-            (name, email, hashed_password, "user")
+            (
+                name,
+                email,
+                hashed_password,
+                "user"
+            )
         )
 
         connection.commit()
@@ -86,13 +115,25 @@ def register():
     return render_template("register.html")
 
 
+# --------------------------------------------------
+# LOGIN
+# --------------------------------------------------
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
 
+    # If already logged in, redirect to correct dashboard
+    if "user_id" in session:
+
+        if session.get("role") == "admin":
+            return redirect(url_for("admin_dashboard"))
+
+        return redirect(url_for("dashboard"))
+
     if request.method == "POST":
 
-        email = request.form["email"].strip().lower()
-        password = request.form["password"]
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
 
         if not email or not password:
             flash("Email and password are required.")
@@ -107,29 +148,54 @@ def login():
 
         connection.close()
 
-        if user and check_password_hash(user["password"], password):
+        # Check user exists and password is correct
+        if user and check_password_hash(
+            user["password"],
+            password
+        ):
 
             session["user_id"] = user["id"]
             session["user_name"] = user["name"]
             session["role"] = user["role"]
-        if user["role"] == "admin":
-            return redirect(url_for("admin_dashboard"))
-        return redirect(url_for("dashboard"))
+
+            # Admin login
+            if user["role"] == "admin":
+                return redirect(
+                    url_for("admin_dashboard")
+                )
+
+            # Normal user login
+            return redirect(
+                url_for("dashboard")
+            )
 
         flash("Invalid email or password.")
+        return redirect(url_for("login"))
 
     return render_template("login.html")
 
 
+# --------------------------------------------------
+# USER DASHBOARD
+# --------------------------------------------------
+
 @app.route("/dashboard")
 def dashboard():
 
+    # User must be logged in
     if "user_id" not in session:
         flash("Please log in first.")
         return redirect(url_for("login"))
 
+    # Admin should not access normal user dashboard
+    if session.get("role") == "admin":
+        return redirect(
+            url_for("admin_dashboard")
+        )
+
     connection = get_db_connection()
 
+    # Only display bugs created by logged-in user
     bugs = connection.execute(
         """
         SELECT *
@@ -148,47 +214,63 @@ def dashboard():
         bugs=bugs
     )
 
-    if "user_id" not in session:
-        flash("Please log in first.")
-        return redirect(url_for("login"))
-    if session.get("role") == "admin":
-        return redirect(url_for("admin_dashboard"))
 
-    return render_template(
-        "dashboard.html",
-        name=session["user_name"]
-    )
-
-
-@app.route("/logout")
-def logout():
-
-    session.clear()
-    flash("You have been logged out.")
-
-    return redirect(url_for("login"))
+# --------------------------------------------------
+# REPORT BUG
+# --------------------------------------------------
 
 @app.route("/report-bug", methods=["GET", "POST"])
 def report_bug():
 
+    # User must be logged in
     if "user_id" not in session:
         flash("Please log in first.")
         return redirect(url_for("login"))
 
+    # Admin cannot report bugs through user page
+    if session.get("role") == "admin":
+        return redirect(
+            url_for("admin_dashboard")
+        )
+
     if request.method == "POST":
 
-        title = request.form["title"].strip()
-        description = request.form["description"].strip()
-        category = request.form["category"]
-        priority = request.form["priority"]
+        title = request.form.get(
+            "title",
+            ""
+        ).strip()
 
+        description = request.form.get(
+            "description",
+            ""
+        ).strip()
+
+        category = request.form.get(
+            "category",
+            ""
+        ).strip()
+
+        priority = request.form.get(
+            "priority",
+            ""
+        ).strip()
+
+        # Basic validation
         if not title or not description:
-            flash("Title and description are required.")
-            return redirect(url_for("report_bug"))
+            flash(
+                "Title and description are required."
+            )
+            return redirect(
+                url_for("report_bug")
+            )
 
         if len(title) < 3:
-            flash("Bug title must be at least 3 characters.")
-            return redirect(url_for("report_bug"))
+            flash(
+                "Bug title must be at least 3 characters."
+            )
+            return redirect(
+                url_for("report_bug")
+            )
 
         valid_categories = [
             "UI",
@@ -205,19 +287,35 @@ def report_bug():
         ]
 
         if category not in valid_categories:
-            flash("Please select a valid category.")
-            return redirect(url_for("report_bug"))
+            flash(
+                "Please select a valid category."
+            )
+            return redirect(
+                url_for("report_bug")
+            )
 
         if priority not in valid_priorities:
-            flash("Please select a valid priority.")
-            return redirect(url_for("report_bug"))
+            flash(
+                "Please select a valid priority."
+            )
+            return redirect(
+                url_for("report_bug")
+            )
 
         connection = get_db_connection()
 
+        # Save bug into database
         connection.execute(
             """
             INSERT INTO bugs
-            (title, description, category, priority, status, reporter_id)
+            (
+                title,
+                description,
+                category,
+                priority,
+                status,
+                reporter_id
+            )
             VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
@@ -235,19 +333,33 @@ def report_bug():
 
         flash("Bug reported successfully.")
 
-        return redirect(url_for("dashboard"))
+        return redirect(
+            url_for("dashboard")
+        )
 
-    return render_template("report_bug.html")
+    return render_template(
+        "report_bug.html"
+    )
+
+
+# --------------------------------------------------
+# ADMIN DASHBOARD
+# --------------------------------------------------
+
 @app.route("/admin")
 def admin_dashboard():
 
+    # Must be logged in
     if "user_id" not in session:
         flash("Please log in first.")
         return redirect(url_for("login"))
 
+    # Must be admin
     if session.get("role") != "admin":
         flash("Administrator access required.")
-        return redirect(url_for("dashboard"))
+        return redirect(
+            url_for("dashboard")
+        )
 
     connection = get_db_connection()
 
@@ -257,11 +369,15 @@ def admin_dashboard():
             bugs.*,
             users.name AS reporter_name,
             assigned_user.name AS assigned_name
+
         FROM bugs
+
         JOIN users
             ON bugs.reporter_id = users.id
+
         LEFT JOIN users AS assigned_user
             ON bugs.assigned_to = assigned_user.id
+
         ORDER BY bugs.created_at DESC
         """
     ).fetchall()
@@ -273,16 +389,29 @@ def admin_dashboard():
         bugs=bugs,
         name=session["user_name"]
     )
-@app.route("/admin/bug/<int:bug_id>", methods=["GET", "POST"])
+
+
+# --------------------------------------------------
+# ADMIN MANAGE BUG
+# --------------------------------------------------
+
+@app.route(
+    "/admin/bug/<int:bug_id>",
+    methods=["GET", "POST"]
+)
 def manage_bug(bug_id):
 
+    # Must be logged in
     if "user_id" not in session:
         flash("Please log in first.")
         return redirect(url_for("login"))
 
+    # Must be admin
     if session.get("role") != "admin":
         flash("Administrator access required.")
-        return redirect(url_for("dashboard"))
+        return redirect(
+            url_for("dashboard")
+        )
 
     connection = get_db_connection()
 
@@ -295,15 +424,27 @@ def manage_bug(bug_id):
         (bug_id,)
     ).fetchone()
 
+    # Bug does not exist
     if bug is None:
         connection.close()
+
         flash("Bug not found.")
-        return redirect(url_for("admin_dashboard"))
+
+        return redirect(
+            url_for("admin_dashboard")
+        )
 
     if request.method == "POST":
 
-        priority = request.form["priority"]
-        status = request.form["status"]
+        priority = request.form.get(
+            "priority",
+            ""
+        ).strip()
+
+        status = request.form.get(
+            "status",
+            ""
+        ).strip()
 
         valid_priorities = [
             "Low",
@@ -317,27 +458,45 @@ def manage_bug(bug_id):
             "Resolved"
         ]
 
+        # Validate priority
         if priority not in valid_priorities:
+
             connection.close()
+
             flash("Invalid priority.")
+
             return redirect(
-                url_for("manage_bug", bug_id=bug_id)
+                url_for(
+                    "manage_bug",
+                    bug_id=bug_id
+                )
             )
 
+        # Validate status
         if status not in valid_statuses:
+
             connection.close()
+
             flash("Invalid status.")
+
             return redirect(
-                url_for("manage_bug", bug_id=bug_id)
+                url_for(
+                    "manage_bug",
+                    bug_id=bug_id
+                )
             )
 
+        # Update bug
         connection.execute(
             """
             UPDATE bugs
-            SET priority = ?,
+
+            SET
+                priority = ?,
                 status = ?,
                 assigned_to = ?,
                 updated_at = CURRENT_TIMESTAMP
+
             WHERE id = ?
             """,
             (
@@ -353,7 +512,9 @@ def manage_bug(bug_id):
 
         flash("Bug updated successfully.")
 
-        return redirect(url_for("admin_dashboard"))
+        return redirect(
+            url_for("admin_dashboard")
+        )
 
     connection.close()
 
@@ -361,5 +522,29 @@ def manage_bug(bug_id):
         "manage_bug.html",
         bug=bug
     )
+
+
+# --------------------------------------------------
+# LOGOUT
+# --------------------------------------------------
+
+@app.route("/logout")
+def logout():
+
+    session.clear()
+
+    flash(
+        "You have been logged out."
+    )
+
+    return redirect(
+        url_for("login")
+    )
+
+
+# --------------------------------------------------
+# RUN APPLICATION
+# --------------------------------------------------
+
 if __name__ == "__main__":
     app.run(debug=True)

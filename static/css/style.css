@@ -132,3 +132,13 @@ body > p {
         width: 100%;
     }
 }
+.alert{
+    max-width: 550px;
+    background-color: #fdecec;
+    border: 1px solid #d9534f;
+    color: #a94442;
+    padding: 12px;
+    margin: 15px 0;
+    border-radius: 5px;
+    font-weight: bold;
+}
